@@ -45,7 +45,14 @@ http
       form.parse(req, function (err, fields, files) {
         var oldpath = files.filetoupload[0].filepath;
         var newpath = "./uploads/" + files.filetoupload[0].originalFilename;
-        fs.rename(oldpath, newpath, function (err) {
+        fs.copyFile(oldpath, newpath, function (err) {
+          if (err) throw err;
+          res.write("File uploaded and moved!");
+          res.end();
+        });
+
+        // 刪除臨時檔案
+        fs.unlink(oldpath, function (err) {
           if (err) throw err;
           res.write("File uploaded and moved!");
           res.end();
