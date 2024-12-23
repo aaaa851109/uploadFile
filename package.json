@@ -1,9 +1,10 @@
 {
-  "name": "uploadfiles",
+  "name": "uploadFile",
   "version": "1.0.0",
   "main": "formidable.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "formidable.js"
   },
   "keywords": [],
   "author": "",
