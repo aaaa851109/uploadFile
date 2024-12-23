@@ -2,7 +2,7 @@
 
 let http = require("http");
 var formidable = require("formidable");
-
+const port = process.env.PORT || 8080;
 // //第一步 -- 建立表單
 // http
 //   .createServer(function (req, res) {
@@ -62,4 +62,6 @@ http
       return res.end();
     }
   })
-  .listen(8080);
+  .listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
