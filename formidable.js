@@ -1,72 +1,61 @@
-// formidable模組 讓使用者將文件上傳到您的電腦
-
 let http = require("http");
-var formidable = require("formidable");
+const formidable = require("formidable");
+const { Storage } = require("@google-cloud/storage");
 const port = process.env.PORT || 8080;
-// //第一步 -- 建立表單
-// http
-//   .createServer(function (req, res) {
-//     res.writeHead(200, { "Content-Type": "text/html" });
-//     res.write(
-//       '<form action="fileupload" method="post" enctype="multipart/form-data">'
-//     );
-//     res.write('<input type="file" name="filetoupload"><br>');
-//     res.write('<input type="submit">');
-//     res.write("</form>");
-//     return res.end();
-//   })
-//   .listen(8080);
 
-// // 第二步 -- 解析上傳的文件
-// http.createServer(function (req, res) {
-//     if (req.url == '/fileupload') {
-//       var form = new formidable.IncomingForm();
-//       form.parse(req, function (err, fields, files) {
-//         res.write('File uploaded');
-//         res.end();
-//       });
-//     } else {
-//       res.writeHead(200, {'Content-Type': 'text/html'});
-//       res.write('<form action="fileupload" method="post" enctype="multipart/form-data">');
-//       res.write('<input type="file" name="filetoupload"><br>');
-//       res.write('<input type="submit">');
-//       res.write('</form>');
-//       return res.end();
-//     }
-//   }).listen(8080);
-
-// // 第三步 -- 儲存文件
-var fs = require("fs");
+// 配置 Google Cloud Storage (GCS)
+const storage = new Storage({
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS, // 環境變數中提供 JSON 憑證內容
+});
+const bucketName = "uploadfile-storage"; // 替換為你的 Bucket 名稱
 
 http
   .createServer(function (req, res) {
-    if (req.url == "/fileupload") {
-      var form = new formidable.IncomingForm();
-      form.parse(req, function (err, fields, files) {
-        var oldpath = files.filetoupload[0].filepath;
-        var newpath = "./uploads/" + files.filetoupload[0].originalFilename;
-        fs.copyFile(oldpath, newpath, function (err) {
-          if (err) throw err;
-          res.write("File uploaded and moved!");
-          res.end();
-        });
+    if (req.url == "/fileupload" && req.method.toLowerCase() === "post") {
+      const form = new formidable.IncomingForm();
 
-        // 刪除臨時檔案
-        fs.unlink(oldpath, function (err) {
-          if (err) throw err;
-          res.write("File uploaded and moved!");
-          res.end();
-        });
+      form.parse(req, async (err, fields, files) => {
+        if (err) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Error parsing the file upload.");
+          console.error("Error parsing form:", err);
+          return;
+        }
+
+        // 獲取上傳文件的信息
+        const uploadedFile = files.filetoupload[0];
+        const oldpath = uploadedFile.filepath;
+        const filename = uploadedFile.originalFilename;
+
+        try {
+          // 上傳到 GCS
+          await storage.bucket(bucketName).upload(oldpath, {
+            destination: filename, // GCS 中的目標文件名
+          });
+
+          console.log(`File ${filename} uploaded to ${bucketName}.`);
+
+          // 回應成功訊息
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end(
+            `File ${filename} successfully uploaded to Google Cloud Storage!`
+          );
+        } catch (uploadErr) {
+          console.error("Error uploading to GCS:", uploadErr);
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Error uploading to Google Cloud Storage.");
+        }
       });
     } else {
+      // 文件上傳表單
       res.writeHead(200, { "Content-Type": "text/html" });
       res.write(
-        '<form action="fileupload" method="post" enctype="multipart/form-data">'
+        '<form action="/fileupload" method="post" enctype="multipart/form-data">'
       );
       res.write('<input type="file" name="filetoupload"><br>');
       res.write('<input type="submit">');
       res.write("</form>");
-      return res.end();
+      res.end();
     }
   })
   .listen(port, () => {
